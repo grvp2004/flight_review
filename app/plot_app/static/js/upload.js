@@ -1,124 +1,69 @@
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('upload-form');
+    const fileInput = document.getElementById('file');
+    const button = document.getElementById('upload-button');
+    const progress = document.querySelector('.progress');
+    const bar = progress.querySelector('.progress-bar');
+    const status = document.getElementById('upload-status');
+    const failure = document.getElementById('upload-failure');
+    try {
+        localStorage.removeItem('email');
+        localStorage.removeItem('access');
+    } catch (_) { /* Storage may be disabled in private browsers. */ }
 
-function restoreSetting(key) {
-	var value = localStorage.getItem(key);
-	if (value !== null) {
-		var field = $("#"+key)[0];
-		if (field.type == 'checkbox'){
-			field.checked = (value == 'true');
-		} else {
-			field.value = value;
-		}
-		console.log(key+', '+value);
-	}
-}
-function saveSetting(key) {
-	var field = $("#"+key)[0];
-	if (field.type == 'checkbox'){
-		var value = field.checked;
-	} else {
-		var value = field.value;
-	}
-	localStorage.setItem(key, value);
-	console.log(key+', '+value);
-}
+    function fail(message) {
+        failure.textContent = message;
+        failure.style.display = 'block';
+        progress.style.display = 'none';
+        status.textContent = '';
+        button.disabled = false;
+        fileInput.disabled = false;
+    }
 
-function saveSettings() {
-	saveSetting('email');
-	saveSetting('access');
-}
-
-function updateAccess() {
-    var access = document.getElementById('access').value;
-    var ids = ["flightreport", "personal"];
-    ids.forEach((value) => {
-        if (value == access) {
-            document.getElementById(value).style.display='table-row';
-        } else {
-            document.getElementById(value).style.display='none';
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        failure.style.display = 'none';
+        const file = fileInput.files[0];
+        if (!file) return fail('Choose a ULog file.');
+        if (file.size > Number(form.dataset.maxSize)) {
+            return fail('The log exceeds the 1 GB file limit.');
         }
+        const data = new FormData(form);
+        button.disabled = true;
+        fileInput.disabled = true;
+        progress.style.display = 'flex';
+        bar.style.width = '0%';
+        bar.textContent = '0%';
+        status.textContent = 'Reading file...';
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/upload');
+        xhr.responseType = 'json';
+        xhr.upload.addEventListener('progress', function (event) {
+            if (!event.lengthComputable) return;
+            const percent = Math.round(event.loaded / event.total * 100);
+            bar.style.width = percent + '%';
+            bar.textContent = percent + '%';
+            bar.setAttribute('aria-valuenow', percent);
         });
-    document.getElementById('public').value = access == "flightreport" ? "true" : "false";
-}
-
-function validateForm() {
-    var valid = true;
-    var error_html = "";
-    if (document.getElementById('access').value == "notset") {
-        error_html += "Access, "
-        valid = false;
-    }
-    var email = document.getElementById('email').value;
-    if (!email.includes("@") || email.length < 5) { // very simple check
-        error_html += "E-Mail, "
-        valid = false;
-    }
-    if (document.getElementById('file').value.length == 0) {
-        error_html += "Log File, "
-        valid = false;
-    }
-
-    // Report
-    if (!valid) {
-        error_html = "<div><font color='red'>Missing fields: " + error_html.substring(0, error_html.length - 2) + "</font></div";
-    }
-    document.getElementById('feedback').innerHTML = error_html;
-
-    if (valid) {
-        saveSettings();
-    }
-
-    return valid;
-}
-
-
-$(function() { // on startup
-	restoreSetting('email');
-	restoreSetting('access');
-	updateAccess();
-
-    // Ajax file upload with progress updates
-    $("#upload-form").on('submit', function (e) {
-        e.preventDefault();
-        var form_data = new FormData(this);
-        var progress_bar = $('.progress');
-        progress_bar.show();
-        var upload_button = $('#upload-button');
-        upload_button.hide();
-
-        $.ajax({
-            xhr: function () {
-                var xhr = new window.XMLHttpRequest();
-                xhr.upload.addEventListener("progress", function (evt) {
-                    if (evt.lengthComputable) {
-                        var percent_complete = (evt.loaded / evt.total) * 99; // max to 99, as the redirect will take time too
-                        progress_bar.find('.progress-bar').width(percent_complete + '%');
-                        progress_bar.find('.progress-bar').html(percent_complete.toFixed(0) + '%');
-                    }
-                }, false);
-                return xhr;
-            },
-            type: 'POST',
-            url: '/upload',
-            data: form_data,
-            cache: false,
-            contentType: false,
-            processData: false,
-            success: function (data) {
-                // Handle the response from the server
-                console.log(data);
-                var json_response = JSON.parse(data);
-                window.location.href = json_response.url
-            },
-            error: function (data, textStatus) {
-                // Handle errors, if any
-                console.error('Error uploading file.');
-                console.error(textStatus);
-                var progress_bar = $('.progress');
-                progress_bar.hide();
-                var upload_failure = $('#upload-failure');
-                upload_failure.show();
+        xhr.upload.addEventListener('load', function () {
+            status.textContent = 'Processing log...';
+        });
+        xhr.addEventListener('load', function () {
+            const result = xhr.response;
+            if (xhr.status >= 200 && xhr.status < 300 && result && result.url) {
+                window.location.assign(result.url);
+            } else {
+                fail(result && result.error ? result.error :
+                    xhr.status === 413 ? 'The log exceeds the 1 GB file limit.' :
+                    'Could not open the log (HTTP ' + xhr.status + '). Try again.');
             }
         });
+        xhr.addEventListener('error', function () {
+            fail('The local viewer stopped responding. Check that it is running, then retry.');
+        });
+        xhr.addEventListener('abort', function () { fail('Opening the log was cancelled.'); });
+        xhr.send(data);
     });
 });
 

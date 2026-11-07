@@ -102,6 +102,8 @@ Use the following link to delete the log:
 
 def _send_email(destination, subject, content):
     """ common method for sending an email to one or more destinations """
+    if is_local_only():
+        return True
 
     # typical values for text_subtype are plain, html, xml
     text_subtype = 'plain'

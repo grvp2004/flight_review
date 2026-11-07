@@ -13,12 +13,13 @@ import tornado.web
 # this is needed for the following imports
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../plot_app'))
 from db_entry import DBDataGenerated
-from config import get_db_connection
+from config import get_db_connection, is_local_only
 
 #pylint: disable=abstract-method
 
 _ENV = Environment(loader=FileSystemLoader(
     os.path.join(os.path.dirname(os.path.realpath(__file__)), '../plot_app/templates')))
+_ENV.globals['local_only'] = is_local_only()
 
 def get_jinja_env():
     """ get the jinja2 Environment object """

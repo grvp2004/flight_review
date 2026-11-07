@@ -1,0 +1,50 @@
+Uncaught exception GET /plot_app/ws?log=496d1a6d-9061-4565-8923-f4c1c4e81685 (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5006', method='GET', uri='/plot_app/ws?log=496d1a6d-9061-4565-8923-f4c1c4e81685', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "C:\Users\garva\Git\Log Viewer\flight_review\.venv\Lib\site-packages\tornado\websocket.py", line 965, in _accept_connection
+    open_result = handler.open(*handler.open_args, **handler.open_kwargs)
+  File "C:\Users\garva\Git\Log Viewer\flight_review\.venv\Lib\site-packages\tornado\web.py", line 3546, in wrapper
+    return method(self, *args, **kwargs)
+  File "C:\Users\garva\Git\Log Viewer\flight_review\.venv\Lib\site-packages\bokeh\server\views\ws.py", line 149, in open
+    raise ProtocolError("Token is expired. Configure the app with a larger value for --session-token-expiration if necessary")
+bokeh.protocol.exceptions.ProtocolError: Token is expired. Configure the app with a larger value for --session-token-expiration if necessary
+Uncaught exception GET /plot_app/ws?log=496d1a6d-9061-4565-8923-f4c1c4e81685 (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5006', method='GET', uri='/plot_app/ws?log=496d1a6d-9061-4565-8923-f4c1c4e81685', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "C:\Users\garva\Git\Log Viewer\flight_review\.venv\Lib\site-packages\tornado\websocket.py", line 965, in _accept_connection
+    open_result = handler.open(*handler.open_args, **handler.open_kwargs)
+  File "C:\Users\garva\Git\Log Viewer\flight_review\.venv\Lib\site-packages\tornado\web.py", line 3546, in wrapper
+    return method(self, *args, **kwargs)
+  File "C:\Users\garva\Git\Log Viewer\flight_review\.venv\Lib\site-packages\bokeh\server\views\ws.py", line 149, in open
+    raise ProtocolError("Token is expired. Configure the app with a larger value for --session-token-expiration if necessary")
+bokeh.protocol.exceptions.ProtocolError: Token is expired. Configure the app with a larger value for --session-token-expiration if necessary
+Uncaught exception GET /plot_app/ws?log=496d1a6d-9061-4565-8923-f4c1c4e81685 (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5006', method='GET', uri='/plot_app/ws?log=496d1a6d-9061-4565-8923-f4c1c4e81685', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "C:\Users\garva\Git\Log Viewer\flight_review\.venv\Lib\site-packages\tornado\websocket.py", line 965, in _accept_connection
+    open_result = handler.open(*handler.open_args, **handler.open_kwargs)
+  File "C:\Users\garva\Git\Log Viewer\flight_review\.venv\Lib\site-packages\tornado\web.py", line 3546, in wrapper
+    return method(self, *args, **kwargs)
+  File "C:\Users\garva\Git\Log Viewer\flight_review\.venv\Lib\site-packages\bokeh\server\views\ws.py", line 149, in open
+    raise ProtocolError("Token is expired. Configure the app with a larger value for --session-token-expiration if necessary")
+bokeh.protocol.exceptions.ProtocolError: Token is expired. Configure the app with a larger value for --session-token-expiration if necessary
+Uncaught exception GET /plot_app/ws?log=496d1a6d-9061-4565-8923-f4c1c4e81685 (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5006', method='GET', uri='/plot_app/ws?log=496d1a6d-9061-4565-8923-f4c1c4e81685', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "C:\Users\garva\Git\Log Viewer\flight_review\.venv\Lib\site-packages\tornado\websocket.py", line 965, in _accept_connection
+    open_result = handler.open(*handler.open_args, **handler.open_kwargs)
+  File "C:\Users\garva\Git\Log Viewer\flight_review\.venv\Lib\site-packages\tornado\web.py", line 3546, in wrapper
+    return method(self, *args, **kwargs)
+  File "C:\Users\garva\Git\Log Viewer\flight_review\.venv\Lib\site-packages\bokeh\server\views\ws.py", line 149, in open
+    raise ProtocolError("Token is expired. Configure the app with a larger value for --session-token-expiration if necessary")
+bokeh.protocol.exceptions.ProtocolError: Token is expired. Configure the app with a larger value for --session-token-expiration if necessary
+Uncaught exception GET /plot_app/ws?log=496d1a6d-9061-4565-8923-f4c1c4e81685 (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5006', method='GET', uri='/plot_app/ws?log=496d1a6d-9061-4565-8923-f4c1c4e81685', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "C:\Users\garva\Git\Log Viewer\flight_review\.venv\Lib\site-packages\tornado\websocket.py", line 965, in _accept_connection
+    open_result = handler.open(*handler.open_args, **handler.open_kwargs)
+  File "C:\Users\garva\Git\Log Viewer\flight_review\.venv\Lib\site-packages\tornado\web.py", line 3546, in wrapper
+    return method(self, *args, **kwargs)
+  File "C:\Users\garva\Git\Log Viewer\flight_review\.venv\Lib\site-packages\bokeh\server\views\ws.py", line 149, in open
+    raise ProtocolError("Token is expired. Configure the app with a larger value for --session-token-expiration if necessary")
+bokeh.protocol.exceptions.ProtocolError: Token is expired. Configure the app with a larger value for --session-token-expiration if necessary

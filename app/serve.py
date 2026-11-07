@@ -29,7 +29,7 @@ from tornado_handlers.radio_controller import RadioControllerHandler
 from tornado_handlers.error_labels import UpdateErrorLabelHandler
 
 from helper import set_log_id_is_filename, print_cache_info #pylint: disable=C0411
-from config import debug_print_timing, get_overview_img_filepath #pylint: disable=C0411
+from config import debug_print_timing, get_overview_img_filepath, is_local_only, get_max_upload_size #pylint: disable=C0411
 
 #pylint: disable=invalid-name
 
@@ -74,6 +74,8 @@ parser.add_argument('--allow-websocket-origin', action='append', type=str, metav
                     default=None)
 
 args = parser.parse_args()
+if is_local_only():
+    args.address = '127.0.0.1'
 
 # This should remain here until --host is removed entirely
 _fixup_deprecated_host_args(args)
@@ -93,8 +95,12 @@ if args.allow_websocket_origin is not None:
     server_kwargs['allow_websocket_origin'] = args.allow_websocket_origin
 server_kwargs['websocket_max_message_size'] = 100 * 1024 * 1024
 
-# increase the maximum upload size (default is 100MB)
-server_kwargs['http_server_kwargs'] = {'max_buffer_size': 300 * 1024 * 1024}
+# Stream large uploads to disk without reserving the entire body in RAM.
+server_kwargs['http_server_kwargs'] = {
+    'max_buffer_size': 8 * 1024 * 1024,
+    'max_body_size': get_max_upload_size() + 1024 * 1024,
+    'body_timeout': 3600,
+}
 
 
 show_ulog_file = False
@@ -131,6 +137,11 @@ server = None
 custom_port = 5006
 while server is None:
     try:
+        if is_local_only():
+            port = server_kwargs.get('port', 5006)
+            server_kwargs['allow_websocket_origin'] = [
+                f'127.0.0.1:{port}', f'localhost:{port}',
+            ]
         server = Server(applications, extra_patterns=extra_patterns, **server_kwargs)
     except OSError as e:
         # if we get a port bind error and running locally with '-f',

@@ -2,13 +2,13 @@
 
 <div class="row">
     <div class="col-lg-12">
-        <h3>Browse public Log Files</h3>
+        <h3>{% if local_only %}Local Log Files{% else %}Browse public Log Files{% endif %}</h3>
 
-        <p>
+        {% if not local_only %}<p>
             Use <a href="https://github.com/PX4/flight_review/blob/main/app/download_logs.py">
             this script</a> for automated download of public log files
             (license: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC-BY PX4</a>).
-        </p>
+        </p>{% endif %}
 
         <table id="logs_table" style="border-collapse: collapse !important"
             class="table table-sm table-striped table-bordered table-condensed">

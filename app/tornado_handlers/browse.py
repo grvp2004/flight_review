@@ -11,7 +11,7 @@ import tornado.web
 
 # this is needed for the following imports
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../plot_app'))
-from config import get_db_connection, get_overview_img_filepath
+from config import get_db_connection, get_overview_img_filepath, is_local_only
 from db_entry import DBData, DBDataGenerated
 from helper import flight_modes_table, get_airframe_data
 
@@ -93,6 +93,8 @@ _SEARCH_COLUMNS = [
 ]
 
 _BASE_WHERE = 'Logs.Public = 1 AND NOT Logs.Source = ?'
+if is_local_only():
+    _BASE_WHERE = 'NOT Logs.Source = ?'
 _BASE_PARAMS = ['CI']
 
 _SELECT_COLS = ('SELECT Logs.Id, Logs.Date, '

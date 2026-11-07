@@ -20,7 +20,7 @@ from pyulog.px4 import PX4ULog
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../plot_app'))
 from db_entry import DBVehicleData, DBData
 from config import get_db_connection, get_http_protocol, get_domain_name, \
-    email_notifications_config, get_ulge_private_key_path
+    email_notifications_config, get_ulge_private_key_path, is_local_only, get_max_upload_size
 from helper import get_total_flight_time, validate_url, get_log_filename, \
     load_ulog_file, get_airframe_name, ULogException, ULogTimeoutException, \
     decrypt_ulge_payload, is_valid_email, is_valid_ulog
@@ -89,13 +89,13 @@ class UploadHandler(TornadoRequestHandlerBase):
     def prepare(self):
         """ called before a new request """
         if self.request.method.upper() == 'POST':
-            if 'expected_size' in self.request.arguments:
-                self.request.connection.set_max_body_size(
-                    int(self.get_argument('expected_size')))
+            self.request.connection.set_max_body_size(get_max_upload_size() + 1024 * 1024)
             try:
                 total = int(self.request.headers.get("Content-Length", "0"))
-            except KeyError:
+            except ValueError:
                 total = 0
+            if total > get_max_upload_size() + 1024 * 1024:
+                raise CustomHTTPError(413, 'The log exceeds the 1 GB file limit.')
             self.multipart_streamer = MultiPartStreamer(total)
 
     def data_received(self, chunk):
@@ -106,7 +106,20 @@ class UploadHandler(TornadoRequestHandlerBase):
     def get(self, *args, **kwargs):
         """ GET request callback """
         template = get_jinja_env().get_template(UPLOAD_TEMPLATE)
-        self.write(template.render())
+        self.write(template.render(max_upload_size=get_max_upload_size()))
+
+    def write_error(self, status_code, **kwargs):
+        error = kwargs.get('exc_info', (None, None, None))[1]
+        message = getattr(error, 'error_message', None)
+        if not message:
+            message = 'Could not open the log. Check available disk space and try again.'
+        self.set_header('Content-Type', 'application/json')
+        self.finish({'error': message})
+
+    def on_connection_close(self):
+        if self.multipart_streamer:
+            self.multipart_streamer.release_parts()
+            self.multipart_streamer = None
 
     def _generate_unique_log_filename(self):
         """Generate a unique log filename that does not exist yet."""
@@ -117,7 +130,7 @@ class UploadHandler(TornadoRequestHandlerBase):
                 return log_id, new_file_name
 
 
-    def post(self, *args, **kwargs):
+    async def post(self, *args, **kwargs):
         """ POST request callback """
         if self.multipart_streamer:
             try:
@@ -127,8 +140,8 @@ class UploadHandler(TornadoRequestHandlerBase):
                      'allowForAnalysis', 'obfuscated', 'source', 'type',
                      'feedback', 'windSpeed', 'rating', 'videoUrl', 'public',
                      'vehicleName', 'redirect'])
-                description = escape(form_data['description'].decode("utf-8"))
-                email = form_data['email'].decode("utf-8")
+                description = escape(form_data.get('description', b'').decode("utf-8"))
+                email = form_data.get('email', b'').decode("utf-8")
                 upload_type = 'personal'
                 if 'type' in form_data:
                     upload_type = form_data['type'].decode("utf-8")
@@ -181,7 +194,21 @@ class UploadHandler(TornadoRequestHandlerBase):
                         if form_data['public'].decode("utf-8") == 'true':
                             is_public = 1
 
-                file_obj = self.multipart_streamer.get_parts_by_name('filearg')[0]
+                if is_local_only():
+                    email = ''
+                    upload_type = 'personal'
+                    is_public = 0
+                    allow_for_analysis = 0
+                    source = 'webui'
+                    video_url = ''
+                    should_redirect = form_data.get('redirect', b'false') == b'true'
+
+                file_parts = self.multipart_streamer.get_parts_by_name('filearg')
+                if len(file_parts) != 1:
+                    raise CustomHTTPError(400, 'Choose one ULog file.')
+                file_obj = file_parts[0]
+                if file_obj.size > get_max_upload_size():
+                    raise CustomHTTPError(413, 'The log exceeds the 1 GB file limit.')
                 upload_file_name = file_obj.get_filename()
 
                 # check if the file is encrypted
@@ -231,7 +258,7 @@ class UploadHandler(TornadoRequestHandlerBase):
                 ulog = None
                 if source != 'CI':
                     ulog_file_name = get_log_filename(log_id)
-                    ulog = load_ulog_file(ulog_file_name)
+                    ulog = await IOLoop.current().run_in_executor(None, load_ulog_file, ulog_file_name)
 
                 # put additional data into a DB
                 con = get_db_connection()
@@ -258,6 +285,12 @@ class UploadHandler(TornadoRequestHandlerBase):
                     con.close()
 
                 url = '/plot_app?log='+log_id
+                if is_local_only():
+                    if should_redirect:
+                        self.redirect(url)
+                    else:
+                        self.write({'url': url})
+                    return
                 full_plot_url = get_http_protocol()+'://'+get_domain_name()+url
                 print(full_plot_url)
 
@@ -353,5 +386,7 @@ class UploadHandler(TornadoRequestHandlerBase):
                 raise CustomHTTPError(500) from e
 
             finally:
-                self.multipart_streamer.release_parts()
+                if self.multipart_streamer:
+                    self.multipart_streamer.release_parts()
+                    self.multipart_streamer = None
 

@@ -1,0 +1,19 @@
+GET[log]=cbaad0fd-9970-450c-8445-49488ce23324
+Data Loading took: 20.3 s
+Plotting took: 72.6 s
+CacheInfo(hits=0, misses=1, maxsize=8, currsize=1)
+GET[log]=cbaad0fd-9970-450c-8445-49488ce23324
+Data Loading took: 0.026 s
+Plotting took: 55.2 s
+GET[log]=cbaad0fd-9970-450c-8445-49488ce23324
+Data Loading took: 0.0239 s
+Plotting took: 56.7 s
+GET[log]=cbaad0fd-9970-450c-8445-49488ce23324
+Data Loading took: 0.0184 s
+Plotting took: 53.8 s
+Data update took: 0.0528 s
+Data update took: 0.036 s
+Data update took: 0.0461 s
+Data update took: 0.0379 s
+Data update took: 0.0413 s
+Data update took: 0.036 s

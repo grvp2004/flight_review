@@ -25,6 +25,15 @@ if os.path.exists(_user_config_file):
 
 email_config = dict(_conf.items('email'))
 
+def is_local_only():
+    """Disable hosted-service behavior for the laptop viewer."""
+    return _conf.getboolean('general', 'local_only', fallback=False)
+
+
+def get_max_upload_size():
+    """Maximum log file size in bytes, excluding multipart overhead."""
+    return _conf.getint('general', 'max_upload_size_mb', fallback=300) * 1024 * 1024
+
 email_notifications_config = dict(_conf.items('email_notifications'))
 email_notifications_config['public_flightreport'] = \
     [ s.strip() for s in email_notifications_config['public_flightreport'].split(',') if s]
