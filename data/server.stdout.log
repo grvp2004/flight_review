@@ -17,3 +17,18 @@ Data update took: 0.0461 s
 Data update took: 0.0379 s
 Data update took: 0.0413 s
 Data update took: 0.036 s
+Data update took: 0.0254 s
+Moving uploaded file to C:\Users\garva\Git\Log Viewer\flight_review\app\plot_app\..\../data\log_files\a3c93c69-1eae-4415-a5b5-9a017a9dd7ea.ulg
+reading vehicle name from db:
+GET[log]=a3c93c69-1eae-4415-a5b5-9a017a9dd7ea
+Data Loading took: 0.00873 s
+Plotting took: 25.4 s
+Moving uploaded file to C:\Users\garva\Git\Log Viewer\flight_review\app\plot_app\..\../data\log_files\496d1a6d-9061-4565-8923-f4c1c4e81685.ulg
+reading vehicle name from db:
+GET[log]=496d1a6d-9061-4565-8923-f4c1c4e81685
+Data Loading took: 0.0228 s
+Plotting took: 54.4 s
+CacheInfo(hits=5, misses=3, maxsize=8, currsize=3)
+CacheInfo(hits=5, misses=3, maxsize=8, currsize=3)
+CacheInfo(hits=5, misses=3, maxsize=8, currsize=3)
+CacheInfo(hits=5, misses=3, maxsize=8, currsize=3)
