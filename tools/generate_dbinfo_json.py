@@ -12,9 +12,14 @@ Usage:
     # With download URLs pointing to a CDN:
     python3 generate_dbinfo_json.py /path/to/logs.sqlite /path/to/output.json \
         --download-url-prefix https://cdn.example.com/
+
+    # Also write aggregate upload counts, including private and CI logs:
+    python3 generate_dbinfo_json.py /path/to/logs.sqlite /path/to/output.json \
+        --stats-output /path/to/dbinfo_stats.json
 """
 
 import argparse
+import datetime
 import json
 import os
 import sqlite3
@@ -23,7 +28,17 @@ import tempfile
 import urllib.request
 import xml.etree.ElementTree
 
+# The app's own lookup tables, so consumers of the stats file decode fields
+# exactly as Flight Review does. config_tables has no dependencies.
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                             '..', 'app', 'plot_app'))
+from config_tables import flight_modes_table  # pylint: disable=wrong-import-position
+
 AIRFRAMES_URL = 'https://px4-travis.s3.amazonaws.com/Firmware/master/_general/airframes.xml'
+
+# Firmware type byte in ver_sw_release ('v1.17.0 255'), as defined by pyulog's
+# get_version_info: a value maps to the highest key that is <= it.
+RELEASE_TYPES = {0: 'dev', 64: 'alpha', 128: 'beta', 192: 'rc', 255: 'release'}
 
 
 def download_airframes_xml():
@@ -142,6 +157,65 @@ def generate(db_path, airframes, download_url_prefix=''):
     return jsonlist
 
 
+# Same split as the statistics page: CI uploads, then public vs private.
+CATEGORY_SQL = ("CASE WHEN IFNULL(Source, '') = 'CI' THEN 'ci' "
+                "WHEN Public = 1 THEN 'public' ELSE 'private' END")
+
+
+def generate_stats(db_path):
+    """Upload counts for all logs, including private and CI ones, which the
+    dbinfo list leaves out. Counts only: no per-log data."""
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+
+    cur.execute('SELECT %s AS category, count(*), min(date(Date)) '
+                'FROM Logs GROUP BY category' % CATEGORY_SQL)
+    totals = {}
+    retained_since = {}
+    for category, count, first_day in cur.fetchall():
+        totals[category] = count
+        retained_since[category] = first_day
+
+    cur.execute('SELECT date(Date) AS day, '
+                "sum(IFNULL(Source, '') <> 'CI' AND Public = 1), "
+                "sum(IFNULL(Source, '') <> 'CI' AND Public = 0), "
+                "sum(IFNULL(Source, '') = 'CI') "
+                'FROM Logs GROUP BY day ORDER BY day')
+    daily = [{'day': day, 'public': public, 'private': private, 'ci': ci}
+             for day, public, private, ci in cur.fetchall()]
+
+    cur.execute('SELECT date(Date) AS day, Source, sum(Public = 1), sum(Public = 0) '
+                "FROM Logs WHERE IFNULL(Source, '') <> 'CI' GROUP BY day, Source ORDER BY day, Source")
+    daily_by_source = [{'day': day, 'source': source if source else '',
+                        'public': public, 'private': private}
+                       for day, source, public, private in cur.fetchall()]
+
+    cur.close()
+    con.close()
+    return {
+        'generated_at': datetime.datetime.now(datetime.timezone.utc)
+                        .strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'retained_since': retained_since,
+        'totals': totals,
+        'daily': daily,
+        'daily_by_source': daily_by_source,
+        # Legends for decoding dbinfo.json entries
+        'flight_modes': {str(mode): name for mode, (name, _color)
+                         in sorted(flight_modes_table.items())},
+        'release_types': {str(value): name for value, name in RELEASE_TYPES.items()},
+    }
+
+
+def write_json(path, data):
+    """Write atomically: temp file then rename."""
+    json_data = json.dumps(data)
+    tmp_path = path + '.tmp'
+    with open(tmp_path, 'w', encoding='utf-8') as f:
+        f.write(json_data)
+    os.replace(tmp_path, path)
+    print('Written %.1f MB to: %s' % (len(json_data) / (1024 * 1024), path))
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Generate the /dbinfo JSON file from the SQLite database.')
@@ -151,6 +225,9 @@ def main():
                         help='URL prefix for direct log file downloads. '
                              'When set, each entry includes a download_url field. '
                              'Example: https://cdn.example.com/')
+    parser.add_argument('--stats-output', default='',
+                        help='Also write aggregate upload counts (public, private '
+                             'and CI, per day and per source) to this path')
     args = parser.parse_args()
 
     if not os.path.exists(args.db_path):
@@ -162,16 +239,10 @@ def main():
     print('Querying database: %s' % args.db_path)
     jsonlist = generate(args.db_path, airframes, args.download_url_prefix)
     print('Generated %d entries' % len(jsonlist))
+    write_json(args.output_path, jsonlist)
 
-    json_data = json.dumps(jsonlist)
-    print('JSON size: %.1f MB' % (len(json_data) / (1024 * 1024)))
-
-    # Write atomically: temp file then rename
-    tmp_path = args.output_path + '.tmp'
-    with open(tmp_path, 'w', encoding='utf-8') as f:
-        f.write(json_data)
-    os.replace(tmp_path, args.output_path)
-    print('Written to: %s' % args.output_path)
+    if args.stats_output:
+        write_json(args.stats_output, generate_stats(args.db_path))
 
 
 if __name__ == '__main__':

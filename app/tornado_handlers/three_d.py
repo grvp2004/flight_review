@@ -12,7 +12,7 @@ import numpy as np
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../plot_app'))
 from config import get_cesium_api_key, get_cesium_enable_bing_aerial
 from helper import validate_log_id, get_log_filename, load_ulog_file, \
-    get_flight_mode_changes, flight_modes_table, get_lat_lon_alt_deg
+    get_flight_mode_changes, flight_modes_table, get_lat_lon_alt_deg, GnssTopic
 
 #pylint: disable=relative-beyond-top-level
 from .common import get_jinja_env, CustomHTTPError, TornadoRequestHandlerBase
@@ -36,15 +36,16 @@ class ThreeDHandler(TornadoRequestHandlerBase):
 
         # extract the necessary information from the log
 
+        gnss = GnssTopic(ulog)
         try:
             # required topics: none of these are optional
-            gps_pos = ulog.get_dataset('vehicle_gps_position')
+            gps_pos = ulog.get_dataset(gnss.name)
             attitude = ulog.get_dataset('vehicle_attitude').data
         except (KeyError, IndexError, ValueError) as error:
             raise CustomHTTPError(
                 400,
                 'The log does not contain all required topics<br />'
-                '(vehicle_gps_position, vehicle_global_position, '
+                '(vehicle_gnss or vehicle_gps_position, vehicle_global_position, '
                 'vehicle_attitude)') from error
 
         # manual control setpoint is optional
@@ -59,7 +60,7 @@ class ThreeDHandler(TornadoRequestHandlerBase):
         # Get the takeoff location. We use the first position with a valid fix,
         # and assume that the vehicle is not in the air already at that point
         takeoff_index = 0
-        gps_indices = np.nonzero(gps_pos.data['fix_type'] > 2)
+        gps_indices = np.nonzero(gps_pos.data[gnss.field('fix_type')] > 2)
         if len(gps_indices[0]) > 0:
             takeoff_index = gps_indices[0][0]
         takeoff_altitude = '{:.3f}' .format(alt[takeoff_index])
@@ -67,11 +68,16 @@ class ThreeDHandler(TornadoRequestHandlerBase):
         takeoff_longitude = '{:.10f}'.format(lon[takeoff_index])
 
 
-        # calculate UTC time offset (assume there's no drift over the entire log)
-        utc_offset = int(gps_pos.data['time_utc_usec'][takeoff_index]) - \
-                int(gps_pos.data['timestamp'][takeoff_index])
-        # Make sure it's not negative, in case 'time_utc_usec' is 0
-        utc_offset = max(utc_offset, 0)
+        # calculate UTC time offset (assume there's no drift over the entire log).
+        # A receiver can report a fix before it knows the time, so use the first
+        # sample with a UTC time.
+        utc_offset = 0
+        time_utc_usec = gps_pos.data[gnss.field('time_utc_usec')]
+        utc_indices = np.nonzero(time_utc_usec)
+        if len(utc_indices[0]) > 0:
+            utc_index = utc_indices[0][0]
+            utc_offset = int(time_utc_usec[utc_index]) - \
+                    int(gps_pos.data['timestamp'][utc_index])
 
         # flight modes
         flight_mode_changes = get_flight_mode_changes(ulog)
@@ -112,7 +118,7 @@ class ThreeDHandler(TornadoRequestHandlerBase):
 
 
         # position
-        # Note: altitude_ellipsoid_m from gps_pos would be the better match for
+        # Note: altitude_ellipsoid from gps_pos would be the better match for
         # altitude, but it's not always available. And since we add an offset
         # (to match the takeoff location with the ground altitude) it does not
         # matter as much.
